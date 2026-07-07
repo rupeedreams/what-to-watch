@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
-import { PLATFORMS, GENRES } from '../data/titles.js'
+import { GENRES, platformColor } from '../data/titles.js'
 import { moreLikeThis } from '../lib/recommend.js'
-import TitleCard, { posterStyle, genreEmoji } from './TitleCard.jsx'
+import TitleCard, { posterStyle } from './TitleCard.jsx'
 
 export default function DetailSheet({ title, onClose, onOpen, watchlist, toggleWatchlist, feedback, setFeedback, kidsMode }) {
   useEffect(() => {
@@ -32,18 +32,25 @@ export default function DetailSheet({ title, onClose, onOpen, watchlist, toggleW
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <button className="sheet-close" onClick={onClose} aria-label="Close">✕</button>
         <div className="sheet-hero" style={posterStyle(title)}>
-          <span className="sheet-emoji">{genreEmoji(title)}</span>
-          <h2>{title.title}</h2>
-          <p className="sheet-sub">
-            {title.type === 'series' ? 'TV Series' : 'Movie'} · {title.year} · {title.lang}
-            {title.rating ? ` · ⭐ ${title.rating}` : ''}
-          </p>
-          <div className="sheet-flags">
-            <span className={`badge ${title.kidsSafe ? 'badge-kids' : 'badge-adult'}`}>
-              {title.kidsSafe ? '👶 Safe for children' : `🔞 ${title.maturity} — not for young kids`}
-            </span>
-            {title.comingSoon && <span className="badge badge-coming">🔜 {title.expected}</span>}
-            {title.leavingSoon && <span className="badge badge-leaving">⏳ {title.leaving}</span>}
+          {title.poster && <img className="sheet-poster" src={title.poster} alt="" />}
+          <div className="sheet-hero-text">
+            <h2>{title.title}</h2>
+            <p className="sheet-sub">
+              {title.type === 'series' ? 'TV Series' : 'Movie'}
+              {title.year ? ` · ${title.year}` : ''}
+              {title.rating ? ` · ⭐ ${title.rating.toFixed(1)} IMDb` : ''}
+            </p>
+            <div className="sheet-flags">
+              <span className={`badge ${title.kidsSafe ? 'badge-kids' : 'badge-adult'}`}>
+                {title.kidsSafe
+                  ? '👶 Safe for children'
+                  : title.maturity === 'NR'
+                    ? '⚠️ Not rated — parental discretion'
+                    : `🔞 ${title.maturity} — not for young kids`}
+              </span>
+              {title.comingSoon && <span className="badge badge-coming">🔜 Coming soon</span>}
+              {title.leavingSoon && <span className="badge badge-leaving">⏳ Leaving soon</span>}
+            </div>
           </div>
         </div>
 
@@ -58,15 +65,26 @@ export default function DetailSheet({ title, onClose, onOpen, watchlist, toggleW
           <p className="summary">{title.summary}</p>
 
           <h3>Where to watch</h3>
-          <div className="platform-list">
-            {title.platforms.map((p) => (
-              <a key={p} className="platform-pill" href={PLATFORMS[p].url} target="_blank" rel="noreferrer"
-                 style={{ borderColor: PLATFORMS[p].color }}>
-                <span className="plat-dot" style={{ background: PLATFORMS[p].color }} />
-                {PLATFORMS[p].name} ↗
+          {title.platforms.length === 0 ? (
+            <p className="hint">Streaming platform yet to be announced — add it to your watchlist to keep an eye on it.</p>
+          ) : (
+            <div className="platform-list">
+              {title.platforms.map((p) => (
+                <a key={p.id} className="platform-pill" href={p.url || title.jwUrl} target="_blank" rel="noreferrer"
+                   style={{ borderColor: platformColor(p.id) }}>
+                  <span className="plat-dot" style={{ background: platformColor(p.id) }} />
+                  {p.name} ↗
+                </a>
+              ))}
+            </div>
+          )}
+          {title.jwUrl && (
+            <p className="hint">
+              <a href={title.jwUrl} target="_blank" rel="noreferrer" className="jw-link">
+                Check latest availability on JustWatch ↗
               </a>
-            ))}
-          </div>
+            </p>
+          )}
 
           <div className="action-row">
             <button className={`action ${inWl ? 'active' : ''}`} onClick={() => toggleWatchlist(title.id)}>

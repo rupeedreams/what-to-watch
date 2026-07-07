@@ -24,6 +24,7 @@ export function scoreTitle(title, aff, feedback) {
   for (const g of title.genres) score += aff[g] || 0
   score = score / Math.sqrt(title.genres.length)
   score += (title.rating || 7) - 7 // quality nudge
+  score += Math.min(title.popularity || 0, 100) / 150 // current-buzz tiebreak
   if (feedback[title.id] === 'dislike') score -= 100
   if (feedback[title.id] === 'like') score += 0.5
   return score
@@ -48,7 +49,6 @@ export function moreLikeThis(title, { kidsMode } = {}, limit = 8) {
     .map((t) => {
       let s = 0
       for (const g of t.genres) if (title.genres.includes(g)) s += 10 / Math.sqrt(genreCount[g])
-      if (t.lang === title.lang) s += 1.5
       if (t.type === title.type) s += 1
       s += ((t.rating || 7) - 7) * 0.5
       return { ...t, score: s }

@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: '30 2 * * *' # daily ~08:00 IST — refresh catalog data
 
 permissions:
   contents: read
@@ -27,6 +29,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Refresh live catalog from JustWatch; fall back to committed snapshot on failure
+      - run: node scripts/fetch-catalog.mjs || echo "::warning::catalog fetch failed, using committed snapshot"
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

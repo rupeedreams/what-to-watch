@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { TITLES, GENRES, PLATFORMS } from './data/titles.js'
+import { TITLES, GENRES, PLATFORMS, CATALOG_META } from './data/titles.js'
 import { recommend } from './lib/recommend.js'
 import { useStored } from './lib/store.js'
 import Onboarding from './components/Onboarding.jsx'
@@ -49,8 +49,8 @@ export default function App() {
     const q = query.trim().toLowerCase()
     return recommend({ selectedGenres: genres, feedback, watchlist, kidsMode, typeFilter: typeFilter || null, limit: 999 })
       .filter((t) => !genreFilter || t.genres.includes(genreFilter))
-      .filter((t) => !platFilter || t.platforms.includes(platFilter))
-      .filter((t) => !q || t.title.toLowerCase().includes(q) || t.summary.toLowerCase().includes(q) || t.lang.toLowerCase().includes(q))
+      .filter((t) => !platFilter || t.platforms.some((p) => p.id === platFilter))
+      .filter((t) => !q || t.title.toLowerCase().includes(q) || t.summary.toLowerCase().includes(q))
   }, [genres, feedback, watchlist, kidsMode, typeFilter, genreFilter, platFilter, query])
 
   if (!genres || editingGenres) {
@@ -71,7 +71,7 @@ export default function App() {
   const topSeries = picks.filter((t) => t.type === 'series').slice(0, 12)
   const comingSoon = TITLES.filter((t) => t.comingSoon && (!kidsMode || t.kidsSafe))
   const leavingSoon = TITLES.filter((t) => t.leavingSoon && (!kidsMode || t.kidsSafe))
-  const hiddenGems = picks.filter((t) => t.rating >= 8.2 && !watchlist.includes(t.id) && !feedback[t.id]).slice(6, 18)
+  const hiddenGems = picks.filter((t) => t.rating >= 7.8 && !watchlist.includes(t.id) && !feedback[t.id]).slice(6, 18)
 
   const wlTitles = watchlist.map((id) => TITLES.find((t) => t.id === id)).filter(Boolean)
   const likedCount = Object.values(feedback).filter((v) => v === 'like').length
@@ -105,7 +105,9 @@ export default function App() {
             <Row heading="🎬 Best movies for you" items={topMovies} onOpen={setDetail} watchlist={watchlist} />
             <Row heading="📺 Best series for you" items={topSeries} onOpen={setDetail} watchlist={watchlist} />
             <Row heading="💎 Hidden gems" sub="Highly rated, easy to miss" items={hiddenGems} onOpen={setDetail} watchlist={watchlist} />
-            <p className="disclaimer">Platform availability is indicative and may change. Tap a platform on any title to open the service.</p>
+            <p className="disclaimer">
+              Live data from JustWatch (India) · {CATALOG_META.counts.total} titles · updated {new Date(CATALOG_META.fetchedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}. Tap a platform on any title to start watching.
+            </p>
           </>
         )}
 
@@ -129,10 +131,10 @@ export default function App() {
             </div>
             <div className="chip-row scroll">
               <button className={`chip ${platFilter === '' ? 'active' : ''}`} onClick={() => setPlatFilter('')}>All platforms</button>
-              {Object.entries(PLATFORMS).map(([id, p]) => (
+              {Object.entries(PLATFORMS).map(([id, name]) => (
                 <button key={id} className={`chip ${platFilter === id ? 'active' : ''}`}
                         onClick={() => setPlatFilter(platFilter === id ? '' : id)}>
-                  {p.name}
+                  {name}
                 </button>
               ))}
             </div>

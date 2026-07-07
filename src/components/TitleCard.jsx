@@ -1,4 +1,4 @@
-import { GENRES, PLATFORMS } from '../data/titles.js'
+import { GENRES, platformColor } from '../data/titles.js'
 
 const HUES = [355, 20, 210, 260, 160, 300, 40, 190, 120, 330]
 export function posterStyle(title) {
@@ -15,28 +15,31 @@ export function genreEmoji(title) {
   return g ? g.emoji : '🎬'
 }
 
-export default function TitleCard({ title, onOpen, inWatchlist, wide }) {
+export default function TitleCard({ title, onOpen, inWatchlist }) {
   return (
-    <button className={`card ${wide ? 'card-wide' : ''}`} onClick={() => onOpen(title)} aria-label={title.title}>
+    <button className="card" onClick={() => onOpen(title)} aria-label={title.title}>
       <div className="poster" style={posterStyle(title)}>
-        <span className="poster-emoji">{genreEmoji(title)}</span>
-        <span className="poster-title">{title.title}</span>
+        {title.poster
+          ? <img className="poster-img" src={title.poster} alt="" loading="lazy" />
+          : <span className="poster-title">{title.title}</span>}
         <div className="poster-badges">
-          {title.kidsSafe && <span className="badge badge-kids">👶 Kids OK</span>}
-          {title.leavingSoon && <span className="badge badge-leaving">⏳ {title.leaving}</span>}
-          {title.comingSoon && <span className="badge badge-coming">🔜 {title.expected}</span>}
+          {title.kidsSafe && <span className="badge badge-kids">👶</span>}
+          {title.leavingSoon && <span className="badge badge-leaving">⏳ Leaving soon</span>}
+          {title.comingSoon && <span className="badge badge-coming">🔜 Soon</span>}
           {inWatchlist && <span className="badge badge-wl">🔖</span>}
         </div>
         <div className="poster-platforms">
           {title.platforms.map((p) => (
-            <span key={p} className="plat-dot" style={{ background: PLATFORMS[p].color }} title={PLATFORMS[p].name} />
+            <span key={p.id} className="plat-dot" style={{ background: platformColor(p.id) }} title={p.name} />
           ))}
         </div>
       </div>
       <div className="card-meta">
+        <span className="card-title">{title.title}</span>
         <span className="card-sub">
-          {title.type === 'series' ? 'Series' : 'Movie'} · {title.lang}
-          {title.rating ? ` · ⭐ ${title.rating}` : ''}
+          {title.type === 'series' ? 'Series' : 'Movie'}
+          {title.year ? ` · ${title.year}` : ''}
+          {title.rating ? ` · ⭐ ${title.rating.toFixed(1)}` : ''}
         </span>
       </div>
     </button>

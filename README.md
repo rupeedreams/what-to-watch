@@ -14,11 +14,21 @@ India has too many OTT subscriptions and no easy answer to "what should I watch 
 - **Coming Soon & Leaving Soon** — catch titles before they leave, watchlist ones that haven't dropped.
 - **Kids mode** — one toggle filters everything down to child-safe titles (Indian CBFC-style maturity ratings: U / U-A / A shown per title).
 
+## Data — real and refreshed daily
+
+The catalog is **live data from JustWatch's public API** (`apis.justwatch.com`) for India:
+
+- ~380 currently-popular movies & series with real posters, synopses, IMDb scores and Indian age certifications.
+- **Real streaming availability** — per-title deep links straight into Netflix, Prime Video, JioHotstar, SonyLIV, ZEE5, Apple TV+, MX Player and Crunchyroll.
+- **Leaving Soon** and **Coming Soon** straight from JustWatch's new/upcoming feeds.
+- `scripts/fetch-catalog.mjs` fetches and normalizes everything into `src/data/catalog.json` (run `npm run fetch-data`). The deploy workflow re-fetches on every push **and on a daily schedule**, so the live site refreshes automatically; the committed snapshot is the fallback if the API is down.
+- Kids flag is conservative: certified U / U-A 7+ **and** not crime/horror.
+
 ## Tech
 
-- React 19 + Vite 5, no backend — the catalog is a curated dataset in `src/data/titles.js`; user state lives in `localStorage`.
-- Recommendation engine in `src/lib/recommend.js`: genre affinity seeded by onboarding, boosted by likes/watchlist, penalised by dislikes, with a rating-quality nudge.
-- Deployed to GitHub Pages via GitHub Actions on every push to `main`.
+- React 19 + Vite 5, static frontend — user state (genres, watchlist, feedback) lives in `localStorage`.
+- Recommendation engine in `src/lib/recommend.js`: genre affinity seeded by onboarding, boosted by likes/watchlist, penalised by dislikes, with rating and popularity nudges.
+- Deployed to GitHub Pages via GitHub Actions on every push to `main` + daily data-refresh cron.
 
 ## Run locally
 
@@ -29,8 +39,6 @@ npm run dev
 
 ## Roadmap
 
-- Live catalog + availability via a metadata API (e.g. TMDB + JustWatch) instead of the static dataset.
 - Accounts with synced watchlists across devices.
 - Native Android/iOS wrappers (Capacitor) once the web experience is validated.
-
-> Platform availability is indicative and may change; verify on the platform.
+- Larger catalog with language filters (Tamil/Telugu/Malayalam/Bengali cuts).
