@@ -29,6 +29,20 @@ const PLATFORM_COLORS = {
 }
 export const platformColor = (id) => PLATFORM_COLORS[id] || '#64748b'
 
+// Audio-language display names, Indian languages first (order = filter chip order)
+export const LANGUAGES = [
+  ['hi', 'Hindi'], ['en', 'English'], ['ta', 'Tamil'], ['te', 'Telugu'],
+  ['ml', 'Malayalam'], ['kn', 'Kannada'], ['bn', 'Bengali'], ['mr', 'Marathi'],
+  ['pa', 'Punjabi'], ['gu', 'Gujarati'], ['ja', 'Japanese'], ['ko', 'Korean'],
+]
+const LANG_NAMES = {
+  ...Object.fromEntries(LANGUAGES),
+  es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese',
+  ru: 'Russian', th: 'Thai', zh: 'Chinese', tr: 'Turkish', pl: 'Polish',
+  id: 'Indonesian', ar: 'Arabic', nl: 'Dutch', vi: 'Vietnamese', ur: 'Urdu',
+}
+export const langName = (code) => LANG_NAMES[code] || code.toUpperCase()
+
 // Populated by loadCatalog(); ES live bindings keep importers up to date.
 export let TITLES = []
 export let PLATFORMS = {}

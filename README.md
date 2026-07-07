@@ -28,6 +28,7 @@ The catalog is **live data from JustWatch's public API** (`apis.justwatch.com`) 
 
 - React 19 + Vite 5, static frontend — user state (genres, watchlist, feedback) lives in `localStorage`.
 - Recommendation engine in `src/lib/recommend.js`: genre affinity seeded by onboarding, boosted by likes/watchlist, penalised by dislikes, with rating and popularity nudges.
+- "More like this" is item-to-item content similarity with explicit weights (documented in the code): rarity-weighted genre Jaccard (0–5), audio-language overlap (1.5), same format (0.7), era proximity (0.6), vote-shrunk IMDb quality (±1), personal genre-affinity tilt (±1), plus a minimum-similarity gate.
 - Deployed to GitHub Pages via GitHub Actions on every push to `main` + daily data-refresh cron.
 
 ## Run locally

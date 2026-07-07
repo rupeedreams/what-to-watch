@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { TITLES, GENRES, PLATFORMS, CATALOG_META, loadCatalog } from './data/titles.js'
+import { TITLES, GENRES, PLATFORMS, LANGUAGES, CATALOG_META, loadCatalog } from './data/titles.js'
 import { recommend } from './lib/recommend.js'
 import { useStored } from './lib/store.js'
 import Onboarding from './components/Onboarding.jsx'
@@ -41,8 +41,10 @@ export default function App() {
   const [typeFilter, setTypeFilter] = useState('')
   const [genreFilter, setGenreFilter] = useState('')
   const [platFilter, setPlatFilter] = useState('')
+  const [langFilter, setLangFilter] = useState('')
+  const [ratingFilter, setRatingFilter] = useState(0)
   const [visibleCount, setVisibleCount] = useState(60)
-  useEffect(() => setVisibleCount(60), [query, typeFilter, genreFilter, platFilter, kidsMode])
+  useEffect(() => setVisibleCount(60), [query, typeFilter, genreFilter, platFilter, langFilter, ratingFilter, kidsMode])
 
   const toggleWatchlist = (id) =>
     setWatchlist((wl) => (wl.includes(id) ? wl.filter((x) => x !== id) : [...wl, id]))
@@ -58,8 +60,10 @@ export default function App() {
     return recommend({ selectedGenres: genres, feedback, watchlist, kidsMode, typeFilter: typeFilter || null, limit: Infinity })
       .filter((t) => !genreFilter || t.genres.includes(genreFilter))
       .filter((t) => !platFilter || t.platforms.some((p) => p.id === platFilter))
+      .filter((t) => !langFilter || (t.languages || []).includes(langFilter))
+      .filter((t) => !ratingFilter || (t.rating || 0) >= ratingFilter)
       .filter((t) => !q || t.title.toLowerCase().includes(q) || t.summary.toLowerCase().includes(q))
-  }, [genres, feedback, watchlist, kidsMode, typeFilter, genreFilter, platFilter, query, catalog.status])
+  }, [genres, feedback, watchlist, kidsMode, typeFilter, genreFilter, platFilter, langFilter, ratingFilter, query, catalog.status])
 
   if (catalog.status === 'loading') {
     return (
@@ -92,6 +96,9 @@ export default function App() {
     )
   }
 
+  const trending = TITLES.filter((t) => t.trendingRank && (!kidsMode || t.kidsSafe))
+    .sort((a, b) => a.trendingRank - b.trendingRank)
+    .slice(0, 20)
   const forYou = picks.slice(0, 14)
   const topMovies = picks.filter((t) => t.type === 'movie').slice(0, 12)
   const topSeries = picks.filter((t) => t.type === 'series').slice(0, 12)
@@ -125,6 +132,7 @@ export default function App() {
               </p>
               {kidsMode && <p className="kids-note">👶 Kids mode — only child-safe titles are shown.</p>}
             </div>
+            <Row heading="📈 Trending in India" sub="What everyone's watching this week" items={trending} onOpen={setDetail} watchlist={watchlist} />
             <Row heading="🔥 Top picks for you" items={forYou} onOpen={setDetail} watchlist={watchlist} />
             <Row heading="⏳ Leaving soon" sub="Watch before they're gone" items={leavingSoon} onOpen={setDetail} watchlist={watchlist} />
             <Row heading="🔜 Coming soon" sub="Add to watchlist now" items={comingSoon} onOpen={setDetail} watchlist={watchlist} />
@@ -161,6 +169,24 @@ export default function App() {
                 <button key={id} className={`chip ${platFilter === id ? 'active' : ''}`}
                         onClick={() => setPlatFilter(platFilter === id ? '' : id)}>
                   {name}
+                </button>
+              ))}
+            </div>
+            <div className="chip-row scroll">
+              <button className={`chip ${langFilter === '' ? 'active' : ''}`} onClick={() => setLangFilter('')}>All languages</button>
+              {LANGUAGES.map(([code, name]) => (
+                <button key={code} className={`chip ${langFilter === code ? 'active' : ''}`}
+                        onClick={() => setLangFilter(langFilter === code ? '' : code)}>
+                  🔊 {name}
+                </button>
+              ))}
+            </div>
+            <div className="chip-row scroll">
+              <button className={`chip ${ratingFilter === 0 ? 'active' : ''}`} onClick={() => setRatingFilter(0)}>Any rating</button>
+              {[6, 7, 8, 9].map((r) => (
+                <button key={r} className={`chip ${ratingFilter === r ? 'active' : ''}`}
+                        onClick={() => setRatingFilter(ratingFilter === r ? 0 : r)}>
+                  ⭐ {r}+
                 </button>
               ))}
             </div>
@@ -221,6 +247,7 @@ export default function App() {
           feedback={feedback}
           setFeedback={setFeedback}
           kidsMode={kidsMode}
+          userGenres={genres}
         />
       )}
     </div>

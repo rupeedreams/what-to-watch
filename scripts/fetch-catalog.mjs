@@ -39,12 +39,13 @@ const OFFER_FIELDS = `
   offers(country: $country, platform: WEB, filter: {monetizationTypes: [FLATRATE, FREE, ADS], packages: ${JSON.stringify(PACKAGES)}}) {
     package { shortName clearName }
     standardWebURL
+    audioLanguages
   }
 `
 
 const POPULAR_QUERY = `
-query($country: Country!, $first: Int!, $objectTypes: [ObjectType!]!, $after: String, $packages: [String!]!) {
-  popularTitles(country: $country, first: $first, after: $after, sortBy: POPULAR,
+query($country: Country!, $first: Int!, $objectTypes: [ObjectType!]!, $after: String, $packages: [String!]!, $sortBy: PopularTitlesSorting! = POPULAR) {
+  popularTitles(country: $country, first: $first, after: $after, sortBy: $sortBy,
     filter: {objectTypes: $objectTypes, packages: $packages, monetizationTypes: [FLATRATE, FREE, ADS]}) {
     pageInfo { endCursor hasNextPage }
     edges { node {
@@ -108,6 +109,8 @@ function normalize(node, flags = {}) {
     name: o.package.clearName,
     url: o.standardWebURL || null,
   }))
+  // Audio languages available across all offers (ISO 639-1/-2 codes)
+  const languages = [...new Set((node.offers || []).flatMap((o) => o.audioLanguages || []))].sort()
   // dedupe platforms
   const seen = new Set()
   const uniqPlatforms = platforms.filter((p) => !seen.has(p.id) && seen.add(p.id))
@@ -123,6 +126,7 @@ function normalize(node, flags = {}) {
     rating: c.scoring?.imdbScore || null,
     votes: c.scoring?.imdbVotes || 0,
     popularity: c.scoring?.tmdbPopularity || 0,
+    languages,
     poster: poster(c.posterUrl),
     jwUrl: c.fullPath ? `https://www.justwatch.com${c.fullPath}` : null,
     platforms: uniqPlatforms,
@@ -130,11 +134,11 @@ function normalize(node, flags = {}) {
   }
 }
 
-async function fetchPopular(objectTypes, total, packages) {
+async function fetchPopular(objectTypes, total, packages, sortBy = 'POPULAR') {
   const edges = []
   let after = null
   while (edges.length < total) {
-    const data = await gql(POPULAR_QUERY, { country: COUNTRY, first: 40, objectTypes, after, packages })
+    const data = await gql(POPULAR_QUERY, { country: COUNTRY, first: 40, objectTypes, after, packages, sortBy })
     const page = data.popularTitles
     edges.push(...page.edges)
     if (!page.pageInfo.hasNextPage) break
@@ -153,6 +157,8 @@ for (const pkg of PACKAGES) {
 }
 jobs.push(() => gql(NEW_QUERY, { country: COUNTRY, first: 40, pageType: 'LEAVING_SOON' }))
 jobs.push(() => gql(NEW_QUERY, { country: COUNTRY, first: 40, pageType: 'UPCOMING' }))
+// What India is watching right now (JustWatch trending chart)
+jobs.push(() => fetchPopular(['MOVIE', 'SHOW'], 40, PACKAGES, 'TRENDING'))
 
 const results = []
 // throttle: 4 concurrent jobs to be polite to the API
@@ -160,6 +166,7 @@ for (let i = 0; i < jobs.length; i += 4) {
   results.push(...(await Promise.all(jobs.slice(i, i + 4).map((fn) => fn()))))
   console.log(`  fetched ${Math.min(i + 4, jobs.length)}/${jobs.length} job batches`)
 }
+const trendingEdges = results.pop()
 const upcoming = results.pop()
 const leaving = results.pop()
 const popularEdges = results.flat()
@@ -177,6 +184,13 @@ const add = (edges, flags) => {
 add(popularEdges, {})
 add(leaving.newTitles.edges, { leavingSoon: true })
 add(upcoming.newTitles.edges, { comingSoon: true })
+trendingEdges.forEach(({ node }, i) => {
+  const t = normalize(node, { trendingRank: i + 1 })
+  if (!t) return
+  const existing = byId.get(t.id)
+  if (existing) existing.trendingRank = i + 1
+  else byId.set(t.id, t)
+})
 
 let titles = [...byId.values()]
   // popular titles must have at least one platform; coming-soon may not yet
@@ -201,6 +215,7 @@ const catalog = {
     leavingSoon: titles.filter((t) => t.leavingSoon).length,
     comingSoon: titles.filter((t) => t.comingSoon).length,
     kidsSafe: titles.filter((t) => t.kidsSafe).length,
+    trending: titles.filter((t) => t.trendingRank).length,
   },
   platforms: platformsSeen,
   titles,

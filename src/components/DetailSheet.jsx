@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
-import { GENRES, platformColor } from '../data/titles.js'
-import { moreLikeThis } from '../lib/recommend.js'
+import { GENRES, platformColor, langName } from '../data/titles.js'
+import { moreLikeThis, genreAffinity } from '../lib/recommend.js'
 import TitleCard, { posterStyle } from './TitleCard.jsx'
 
-export default function DetailSheet({ title, onClose, onOpen, watchlist, toggleWatchlist, feedback, setFeedback, kidsMode }) {
+export default function DetailSheet({ title, onClose, onOpen, watchlist, toggleWatchlist, feedback, setFeedback, kidsMode, userGenres }) {
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -15,7 +15,9 @@ export default function DetailSheet({ title, onClose, onOpen, watchlist, toggleW
   }, [onClose])
 
   if (!title) return null
-  const similar = moreLikeThis(title, { kidsMode })
+  const aff = genreAffinity(userGenres || [], feedback, watchlist)
+  const similar = moreLikeThis(title, { kidsMode, aff })
+  const audioLangs = (title.languages || []).map(langName)
   const verdict = feedback[title.id]
   const inWl = watchlist.includes(title.id)
 
@@ -63,6 +65,12 @@ export default function DetailSheet({ title, onClose, onOpen, watchlist, toggleW
           </div>
 
           <p className="summary">{title.summary}</p>
+
+          {audioLangs.length > 0 && (
+            <p className="audio-langs">
+              🔊 Audio: {audioLangs.slice(0, 6).join(', ')}{audioLangs.length > 6 ? ` +${audioLangs.length - 6} more` : ''}
+            </p>
+          )}
 
           <h3>Where to watch</h3>
           {title.platforms.length === 0 ? (
