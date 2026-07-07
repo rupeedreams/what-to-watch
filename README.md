@@ -18,10 +18,10 @@ India has too many OTT subscriptions and no easy answer to "what should I watch 
 
 The catalog is **live data from JustWatch's public API** (`apis.justwatch.com`) for India:
 
-- ~380 currently-popular movies & series with real posters, synopses, IMDb scores and Indian age certifications.
-- **Real streaming availability** — per-title deep links straight into Netflix, Prime Video, JioHotstar, SonyLIV, ZEE5, Apple TV+, MX Player and Crunchyroll.
+- **~2,000 movies & series** — each platform's own top catalog (200–550 titles per service), fetched per-platform, with real posters, synopses, IMDb scores and Indian age certifications.
+- **Real streaming availability** — per-title deep links straight into Netflix, Prime Video, JioHotstar, SonyLIV, ZEE5, Apple TV+, MX Player and Crunchyroll (subscription, free and ad-supported offers).
 - **Leaving Soon** and **Coming Soon** straight from JustWatch's new/upcoming feeds.
-- `scripts/fetch-catalog.mjs` fetches and normalizes everything into `src/data/catalog.json` (run `npm run fetch-data`). The deploy workflow re-fetches on every push **and on a daily schedule**, so the live site refreshes automatically; the committed snapshot is the fallback if the API is down.
+- `scripts/fetch-catalog.mjs` fetches and normalizes everything into `public/catalog.json` (run `npm run fetch-data`), which the app loads at runtime — the JS bundle stays small no matter how big the catalog grows. The deploy workflow re-fetches on every push **and on a daily schedule**; the committed snapshot is the fallback if the API is down.
 - Kids flag is conservative: certified U / U-A 7+ **and** not crime/horror.
 
 ## Tech

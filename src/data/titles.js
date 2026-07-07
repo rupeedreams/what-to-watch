@@ -1,6 +1,5 @@
-// Live catalog fetched from JustWatch (India) by scripts/fetch-catalog.mjs.
-// Refresh with: npm run fetch-data
-import catalog from './catalog.json'
+// Live catalog fetched from JustWatch (India) by scripts/fetch-catalog.mjs
+// into public/catalog.json, loaded at runtime. Refresh: npm run fetch-data
 
 export const GENRES = [
   { id: 'action', label: 'Action', emoji: '💥' },
@@ -30,12 +29,17 @@ const PLATFORM_COLORS = {
 }
 export const platformColor = (id) => PLATFORM_COLORS[id] || '#64748b'
 
-// All platforms present in the current catalog (id -> display name)
-export const PLATFORMS = catalog.platforms
+// Populated by loadCatalog(); ES live bindings keep importers up to date.
+export let TITLES = []
+export let PLATFORMS = {}
+export let CATALOG_META = { fetchedAt: null, source: '', counts: { total: 0 } }
 
-export const TITLES = catalog.titles
-export const CATALOG_META = {
-  fetchedAt: catalog.fetchedAt,
-  source: catalog.source,
-  counts: catalog.counts,
+export async function loadCatalog() {
+  const res = await fetch(`${import.meta.env.BASE_URL}catalog.json`)
+  if (!res.ok) throw new Error(`Catalog load failed (HTTP ${res.status})`)
+  const catalog = await res.json()
+  TITLES = catalog.titles
+  PLATFORMS = catalog.platforms
+  CATALOG_META = { fetchedAt: catalog.fetchedAt, source: catalog.source, counts: catalog.counts }
+  return catalog
 }

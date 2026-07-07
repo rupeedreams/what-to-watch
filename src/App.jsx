@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { TITLES, GENRES, PLATFORMS, CATALOG_META } from './data/titles.js'
+import { useEffect, useMemo, useState } from 'react'
+import { TITLES, GENRES, PLATFORMS, CATALOG_META, loadCatalog } from './data/titles.js'
 import { recommend } from './lib/recommend.js'
 import { useStored } from './lib/store.js'
 import Onboarding from './components/Onboarding.jsx'
@@ -24,6 +24,12 @@ function Row({ heading, sub, items, onOpen, watchlist }) {
 }
 
 export default function App() {
+  const [catalog, setCatalog] = useState({ status: 'loading' })
+  useEffect(() => {
+    loadCatalog()
+      .then(() => setCatalog({ status: 'ready' }))
+      .catch((e) => setCatalog({ status: 'error', message: e.message }))
+  }, [])
   const [genres, setGenres] = useStored('genres', null)
   const [watchlist, setWatchlist] = useStored('watchlist', [])
   const [feedback, setFeedback] = useStored('feedback', {})
@@ -35,23 +41,43 @@ export default function App() {
   const [typeFilter, setTypeFilter] = useState('')
   const [genreFilter, setGenreFilter] = useState('')
   const [platFilter, setPlatFilter] = useState('')
+  const [visibleCount, setVisibleCount] = useState(60)
+  useEffect(() => setVisibleCount(60), [query, typeFilter, genreFilter, platFilter, kidsMode])
 
   const toggleWatchlist = (id) =>
     setWatchlist((wl) => (wl.includes(id) ? wl.filter((x) => x !== id) : [...wl, id]))
 
   const picks = useMemo(
     () => (genres ? recommend({ selectedGenres: genres, feedback, watchlist, kidsMode }) : []),
-    [genres, feedback, watchlist, kidsMode]
+    [genres, feedback, watchlist, kidsMode, catalog.status]
   )
 
   const discoverResults = useMemo(() => {
     if (!genres) return []
     const q = query.trim().toLowerCase()
-    return recommend({ selectedGenres: genres, feedback, watchlist, kidsMode, typeFilter: typeFilter || null, limit: 999 })
+    return recommend({ selectedGenres: genres, feedback, watchlist, kidsMode, typeFilter: typeFilter || null, limit: Infinity })
       .filter((t) => !genreFilter || t.genres.includes(genreFilter))
       .filter((t) => !platFilter || t.platforms.some((p) => p.id === platFilter))
       .filter((t) => !q || t.title.toLowerCase().includes(q) || t.summary.toLowerCase().includes(q))
-  }, [genres, feedback, watchlist, kidsMode, typeFilter, genreFilter, platFilter, query])
+  }, [genres, feedback, watchlist, kidsMode, typeFilter, genreFilter, platFilter, query, catalog.status])
+
+  if (catalog.status === 'loading') {
+    return (
+      <div className="splash">
+        <span className="logo-mark">🍿</span>
+        <p>Loading today's catalog…</p>
+      </div>
+    )
+  }
+  if (catalog.status === 'error') {
+    return (
+      <div className="splash">
+        <span className="logo-mark">😵</span>
+        <p>Couldn't load the catalog ({catalog.message}).</p>
+        <button className="cta small" onClick={() => window.location.reload()}>Retry</button>
+      </div>
+    )
+  }
 
   if (!genres || editingGenres) {
     return (
@@ -140,10 +166,15 @@ export default function App() {
             </div>
             <p className="result-count">{discoverResults.length} title{discoverResults.length !== 1 ? 's' : ''}</p>
             <div className="grid">
-              {discoverResults.map((t) => (
+              {discoverResults.slice(0, visibleCount).map((t) => (
                 <TitleCard key={t.id} title={t} onOpen={setDetail} inWatchlist={watchlist.includes(t.id)} />
               ))}
             </div>
+            {discoverResults.length > visibleCount && (
+              <button className="cta small load-more" onClick={() => setVisibleCount((n) => n + 60)}>
+                Show more ({discoverResults.length - visibleCount} left)
+              </button>
+            )}
             {discoverResults.length === 0 && <p className="empty">No matches. Try clearing a filter.</p>}
           </div>
         )}

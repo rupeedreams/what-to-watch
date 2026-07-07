@@ -36,16 +36,16 @@ const CONTENT_FIELDS = `
 `
 
 const OFFER_FIELDS = `
-  offers(country: $country, platform: WEB, filter: {monetizationTypes: [FLATRATE], packages: ${JSON.stringify(PACKAGES)}}) {
+  offers(country: $country, platform: WEB, filter: {monetizationTypes: [FLATRATE, FREE, ADS], packages: ${JSON.stringify(PACKAGES)}}) {
     package { shortName clearName }
     standardWebURL
   }
 `
 
 const POPULAR_QUERY = `
-query($country: Country!, $first: Int!, $objectTypes: [ObjectType!]!, $after: String) {
+query($country: Country!, $first: Int!, $objectTypes: [ObjectType!]!, $after: String, $packages: [String!]!) {
   popularTitles(country: $country, first: $first, after: $after, sortBy: POPULAR,
-    filter: {objectTypes: $objectTypes, packages: ${JSON.stringify(PACKAGES)}, monetizationTypes: [FLATRATE]}) {
+    filter: {objectTypes: $objectTypes, packages: $packages, monetizationTypes: [FLATRATE, FREE, ADS]}) {
     pageInfo { endCursor hasNextPage }
     edges { node {
       id objectType
@@ -130,11 +130,11 @@ function normalize(node, flags = {}) {
   }
 }
 
-async function fetchPopular(objectTypes, total) {
+async function fetchPopular(objectTypes, total, packages) {
   const edges = []
   let after = null
   while (edges.length < total) {
-    const data = await gql(POPULAR_QUERY, { country: COUNTRY, first: 40, objectTypes, after })
+    const data = await gql(POPULAR_QUERY, { country: COUNTRY, first: 40, objectTypes, after, packages })
     const page = data.popularTitles
     edges.push(...page.edges)
     if (!page.pageInfo.hasNextPage) break
@@ -143,12 +143,26 @@ async function fetchPopular(objectTypes, total) {
   return edges
 }
 
-const [movieEdges, showEdges, leaving, upcoming] = await Promise.all([
-  fetchPopular(['MOVIE'], 160),
-  fetchPopular(['SHOW'], 160),
-  gql(NEW_QUERY, { country: COUNTRY, first: 40, pageType: 'LEAVING_SOON' }),
-  gql(NEW_QUERY, { country: COUNTRY, first: 40, pageType: 'UPCOMING' }),
-])
+// Per-platform depth: each service's own top movies + shows, so every
+// platform is represented with a real catalog, not just the global chart.
+const PER_PLATFORM = { movies: 140, shows: 140 }
+const jobs = []
+for (const pkg of PACKAGES) {
+  jobs.push(() => fetchPopular(['MOVIE'], PER_PLATFORM.movies, [pkg]))
+  jobs.push(() => fetchPopular(['SHOW'], PER_PLATFORM.shows, [pkg]))
+}
+jobs.push(() => gql(NEW_QUERY, { country: COUNTRY, first: 40, pageType: 'LEAVING_SOON' }))
+jobs.push(() => gql(NEW_QUERY, { country: COUNTRY, first: 40, pageType: 'UPCOMING' }))
+
+const results = []
+// throttle: 4 concurrent jobs to be polite to the API
+for (let i = 0; i < jobs.length; i += 4) {
+  results.push(...(await Promise.all(jobs.slice(i, i + 4).map((fn) => fn()))))
+  console.log(`  fetched ${Math.min(i + 4, jobs.length)}/${jobs.length} job batches`)
+}
+const upcoming = results.pop()
+const leaving = results.pop()
+const popularEdges = results.flat()
 
 const byId = new Map()
 const add = (edges, flags) => {
@@ -160,8 +174,7 @@ const add = (edges, flags) => {
     else byId.set(t.id, t)
   }
 }
-add(movieEdges, {})
-add(showEdges, {})
+add(popularEdges, {})
 add(leaving.newTitles.edges, { leavingSoon: true })
 add(upcoming.newTitles.edges, { comingSoon: true })
 
@@ -194,6 +207,9 @@ const catalog = {
 }
 
 const { writeFileSync, mkdirSync } = await import('node:fs')
-mkdirSync(new URL('../src/data/', import.meta.url), { recursive: true })
-writeFileSync(new URL('../src/data/catalog.json', import.meta.url), JSON.stringify(catalog, null, 1))
-console.log('Catalog written:', JSON.stringify(catalog.counts), '| platforms:', Object.values(platformsSeen).join(', '))
+mkdirSync(new URL('../public/', import.meta.url), { recursive: true })
+writeFileSync(new URL('../public/catalog.json', import.meta.url), JSON.stringify(catalog))
+const perPlatform = {}
+for (const t of titles) for (const p of t.platforms) perPlatform[p.name] = (perPlatform[p.name] || 0) + 1
+console.log('Catalog written:', JSON.stringify(catalog.counts))
+console.log('Per platform:', JSON.stringify(perPlatform))
