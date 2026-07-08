@@ -8,8 +8,26 @@ export default function DetailSheet({ title, onClose, onOpen, watchlist, toggleW
     const onKey = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
+
+    // Mobile swipe-to-dismiss on sheet
+    let startY = 0
+    const onTouchStart = (e) => { startY = e.touches[0].clientY }
+    const onTouchEnd = (e) => {
+      const endY = e.changedTouches[0].clientY
+      if (endY - startY > 80) onClose() // swipe down > 80px
+    }
+    const sheet = document.querySelector('.sheet')
+    if (sheet) {
+      sheet.addEventListener('touchstart', onTouchStart)
+      sheet.addEventListener('touchend', onTouchEnd)
+    }
+
     return () => {
       window.removeEventListener('keydown', onKey)
+      if (sheet) {
+        sheet.removeEventListener('touchstart', onTouchStart)
+        sheet.removeEventListener('touchend', onTouchEnd)
+      }
       document.body.style.overflow = ''
     }
   }, [onClose])
